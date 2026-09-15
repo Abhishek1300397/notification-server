@@ -1,0 +1,14 @@
+POST http://localhost:5080/api/notifications
+Content-Type: application/json
+
+{
+  "tenantId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "channel": "Email",
+  "recipient": "user@example.com",
+  "templateId": "welcome",
+  "data": { "name": "Ada" }
+}
+
+###
+GET http://localhost:5080/health
+
