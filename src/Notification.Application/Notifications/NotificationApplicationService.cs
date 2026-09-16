@@ -54,7 +54,11 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
                     existing.Id,
                     existing.TenantId);
 
-                return new CreateNotificationResponse(existing.Id, existing.TenantId, existing.Status.ToString());
+                return new CreateNotificationResponse(
+                    existing.Id,
+                    existing.TenantId,
+                    existing.Status.ToString(),
+                    existing.Priority.ToString());
             }
         }
 
@@ -64,6 +68,7 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             Id = Guid.NewGuid(),
             TenantId = request.TenantId,
             Channel = request.Channel,
+            Priority = request.Priority,
             Recipient = request.Recipient.Trim(),
             TemplateId = request.TemplateId.Trim(),
             DataJson = JsonSerializer.Serialize(request.Data ?? new Dictionary<string, string>(), JsonOptions),
@@ -77,6 +82,7 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             NotificationId = notification.Id,
             TenantId = notification.TenantId,
             Channel = notification.Channel.ToString(),
+            Priority = notification.Priority.ToString(),
             TemplateId = notification.TemplateId,
             Data = request.Data,
             CreatedAtUtc = now
@@ -89,6 +95,7 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             NotificationId = notification.Id,
             Type = message.MessageType,
             Payload = JsonSerializer.Serialize(message, JsonOptions),
+            Priority = notification.Priority,
             Status = OutboxStatus.Pending,
             CreatedAtUtc = now,
             NextAttemptAtUtc = now
@@ -107,7 +114,11 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             notification.TenantId,
             notification.Channel);
 
-        return new CreateNotificationResponse(notification.Id, notification.TenantId, notification.Status.ToString());
+        return new CreateNotificationResponse(
+            notification.Id,
+            notification.TenantId,
+            notification.Status.ToString(),
+            notification.Priority.ToString());
     }
 
     public async Task<NotificationStatusResponse?> GetAsync(Guid notificationId, CancellationToken cancellationToken)
@@ -123,6 +134,7 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             notification.TenantId,
             notification.Channel.ToString(),
             notification.Status.ToString(),
+            notification.Priority.ToString(),
             notification.AttemptCount,
             notification.CreatedAtUtc,
             notification.SentAtUtc,
@@ -146,9 +158,9 @@ public sealed class NotificationApplicationService : INotificationApplicationSer
             throw new ArgumentException("TemplateId is required.", nameof(request));
         }
 
-        if (!Enum.IsDefined(request.Channel))
+        if (!Enum.IsDefined(request.Priority))
         {
-            throw new ArgumentException("Channel is not supported.", nameof(request));
+            throw new ArgumentException("Priority is not supported.", nameof(request));
         }
     }
 }

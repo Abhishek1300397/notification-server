@@ -33,15 +33,24 @@ public sealed class RabbitMqMessagePublisher : IMessagePublisher
         CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(message, JsonOptions);
-        return PublishJsonAsync(exchange, routingKey, json, headers, cancellationToken);
+        return PublishJsonAsync(exchange, routingKey, json, headers, 5, cancellationToken);
     }
+
+    public Task PublishJsonAsync(
+        string exchange,
+        string routingKey,
+        string jsonPayload,
+        IReadOnlyDictionary<string, object>? headers,
+        CancellationToken cancellationToken) =>
+        PublishJsonAsync(exchange, routingKey, jsonPayload, headers, 5, cancellationToken);
 
     public async Task PublishJsonAsync(
         string exchange,
         string routingKey,
         string jsonPayload,
-        IReadOnlyDictionary<string, object>? headers = null,
-        CancellationToken cancellationToken = default)
+        IReadOnlyDictionary<string, object>? headers,
+        byte priority,
+        CancellationToken cancellationToken)
     {
         var connection = await _connections.GetConnectionAsync(cancellationToken);
         var channelOptions = new CreateChannelOptions(
@@ -54,6 +63,7 @@ public sealed class RabbitMqMessagePublisher : IMessagePublisher
             Persistent = true,
             ContentType = "application/json",
             MessageId = Guid.NewGuid().ToString("N"),
+            Priority = Math.Min(priority, _options.MaxPriority),
             Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
             Headers = headers?.ToDictionary(k => k.Key, v => (object?)v.Value)
         };
@@ -67,9 +77,9 @@ public sealed class RabbitMqMessagePublisher : IMessagePublisher
             cancellationToken: cancellationToken);
 
         _logger.LogDebug(
-            "Published message to {Exchange}/{RoutingKey} from host {Host}",
+            "Published message to {Exchange}/{RoutingKey} with priority {Priority}",
             exchange,
             routingKey,
-            _options.Host);
+            priority);
     }
 }

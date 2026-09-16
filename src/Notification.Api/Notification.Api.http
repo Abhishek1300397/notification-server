@@ -4,6 +4,7 @@ Content-Type: application/json
 {
   "tenantId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   "channel": "Email",
+  "priority": "High",
   "recipient": "user@example.com",
   "templateId": "welcome",
   "data": { "name": "Ada" }
