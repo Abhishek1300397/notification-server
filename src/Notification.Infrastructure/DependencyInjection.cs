@@ -1,7 +1,9 @@
+using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Notification.Application;
 using Notification.Application.Abstractions.Messaging;
 using Notification.Application.Abstractions.Notifications;
@@ -14,6 +16,7 @@ using Notification.Infrastructure.BackgroundJobs;
 using Notification.Infrastructure.Health;
 using Notification.Infrastructure.Messaging;
 using Notification.Infrastructure.Messaging.RabbitMq;
+using Notification.Infrastructure.Notifications;
 using Notification.Infrastructure.Notifications.Channels;
 using Notification.Infrastructure.Observability;
 using Notification.Infrastructure.Persistence;
@@ -32,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<OutboxOptions>(configuration.GetSection(OutboxOptions.SectionName));
         services.Configure<RabbitMqOptions>(configuration.GetSection(RabbitMqOptions.SectionName));
         services.Configure<NotificationRetryOptions>(configuration.GetSection(NotificationRetryOptions.SectionName));
+        services.Configure<ResendOptions>(configuration.GetSection(ResendOptions.SectionName));
 
         var connectionString = configuration.GetConnectionString("Notifications")
             ?? throw new InvalidOperationException("Connection string 'Notifications' is not configured.");
@@ -52,7 +56,17 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<RabbitMqTopology>();
         services.AddSingleton<IMessagePublisher, RabbitMqMessagePublisher>();
 
-        services.AddSingleton<INotificationChannel, EmailNotificationChannel>();
+        services.AddHttpClient<IEmailSender, ResendEmailSender>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<ResendOptions>>().Value;
+            client.BaseAddress = new Uri(string.IsNullOrWhiteSpace(options.BaseUrl)
+                ? "https://api.resend.com"
+                : options.BaseUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(1, options.TimeoutSeconds));
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        });
+
+        services.AddTransient<INotificationChannel, EmailNotificationChannel>();
         services.AddSingleton<INotificationChannel, SmsNotificationChannel>();
         services.AddSingleton<INotificationChannel, PushNotificationChannel>();
 

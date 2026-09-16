@@ -7,6 +7,7 @@ public sealed class NotificationRequest
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }
     public NotificationChannel Channel { get; set; }
+    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
     public string Recipient { get; set; } = default!;
     public string TemplateId { get; set; } = default!;
     public string DataJson { get; set; } = "{}";

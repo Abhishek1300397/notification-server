@@ -14,11 +14,12 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(x => x.Type).HasMaxLength(128).IsRequired();
         builder.Property(x => x.Payload).HasColumnType("jsonb").IsRequired();
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.Priority).HasConversion<int>();
         builder.Property(x => x.LastError).HasMaxLength(2000);
 
-        // Supports pending-batch claims ordered by creation time:
-        // WHERE status = Pending AND next_attempt_at_utc <= now()
-        builder.HasIndex(x => new { x.Status, x.NextAttemptAtUtc, x.CreatedAtUtc })
+        // Claim query: WHERE status/next_attempt ready ORDER BY priority DESC, created_at_utc
+        builder.HasIndex(x => new { x.Status, x.NextAttemptAtUtc, x.Priority, x.CreatedAtUtc })
+            .IsDescending(false, false, true, false)
             .HasDatabaseName("ix_outbox_messages_status_next_attempt");
 
         builder.HasIndex(x => x.NotificationId)

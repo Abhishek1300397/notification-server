@@ -57,27 +57,17 @@ public sealed class NotificationConsumerHostedService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _health.SetConsumerRunning(true);
-        _logger.LogInformation("Notification consumer starting");
+        var consumerCount = Math.Max(1, _options.ConsumerCount);
+        _logger.LogInformation(
+            "Notification consumer starting. Consumers={ConsumerCount} PrefetchCount={PrefetchCount}",
+            consumerCount,
+            _options.PrefetchCount);
 
         try
         {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await ConsumeUntilDisconnectedAsync(stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _metrics.SetRabbitMqConnected(false);
-                    _logger.LogWarning(ex, "RabbitMQ consumer loop failed. Reconnecting");
-                    await DelayReconnectAsync(stoppingToken);
-                }
-            }
+            var consumers = Enumerable.Range(0, consumerCount)
+                .Select(index => RunConsumerAsync(index, stoppingToken));
+            await Task.WhenAll(consumers);
         }
         finally
         {
@@ -86,7 +76,28 @@ public sealed class NotificationConsumerHostedService : BackgroundService
         }
     }
 
-    private async Task ConsumeUntilDisconnectedAsync(CancellationToken stoppingToken)
+    private async Task RunConsumerAsync(int consumerIndex, CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await ConsumeUntilDisconnectedAsync(consumerIndex, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _metrics.SetRabbitMqConnected(false);
+                _logger.LogWarning(ex, "RabbitMQ consumer {ConsumerIndex} failed. Reconnecting", consumerIndex);
+                await DelayReconnectAsync(stoppingToken);
+            }
+        }
+    }
+
+    private async Task ConsumeUntilDisconnectedAsync(int consumerIndex, CancellationToken stoppingToken)
     {
         var connection = await _connections.GetConnectionAsync(stoppingToken);
         await using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
@@ -121,7 +132,11 @@ public sealed class NotificationConsumerHostedService : BackgroundService
             consumer: consumer,
             cancellationToken: stoppingToken);
 
-        _logger.LogInformation("Consuming queue {Queue} with prefetch {PrefetchCount}", _options.Queue, _options.PrefetchCount);
+        _logger.LogInformation(
+            "Consumer {ConsumerIndex} consuming queue {Queue} with prefetch {PrefetchCount}",
+            consumerIndex,
+            _options.Queue,
+            _options.PrefetchCount);
         await tcs.Task;
     }
 
@@ -227,6 +242,7 @@ public sealed class NotificationConsumerHostedService : BackgroundService
                 Persistent = true,
                 ContentType = "application/json",
                 MessageId = args.BasicProperties.MessageId,
+                Priority = args.BasicProperties.Priority,
                 Headers = headers
             },
             body: args.Body,
@@ -280,6 +296,7 @@ public sealed class NotificationConsumerHostedService : BackgroundService
                 Persistent = true,
                 ContentType = "application/json",
                 MessageId = args.BasicProperties.MessageId,
+                Priority = args.BasicProperties.Priority,
                 Headers = headers
             },
             body: args.Body,

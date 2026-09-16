@@ -46,7 +46,7 @@ public sealed class OutboxRepository : IOutboxRepository
                        status = {pending}
                        OR (status = {processing} AND locked_until_utc < {now})
                    )
-                 ORDER BY created_at_utc
+                 ORDER BY priority DESC, created_at_utc
                  LIMIT {batchSize}
                  FOR UPDATE SKIP LOCKED
              )

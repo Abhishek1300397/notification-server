@@ -14,7 +14,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<INotificationApplicationService, NotificationApplicationService>();
         services.AddScoped<INotificationProcessor, NotificationProcessor>();
-        services.AddSingleton<INotificationChannelResolver, NotificationChannelResolver>();
+        services.AddScoped<INotificationChannelResolver, NotificationChannelResolver>();
         services.AddSingleton<ITemplateRenderer, SimpleTemplateRenderer>();
         services.AddSingleton<INotificationMessageValidator, NotificationMessageValidator>();
         services.AddSingleton<IRetryBackoffCalculator, RetryBackoffCalculator>();
