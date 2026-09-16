@@ -31,44 +31,55 @@ public sealed class OutboxBackgroundService : BackgroundService
     {
         _health.SetOutboxRunning(true);
         _logger.LogInformation(
-            "Outbox worker started. BatchSize={BatchSize} PollingIntervalSeconds={PollingIntervalSeconds}",
+            "Outbox worker started. Workers={WorkerCount} BatchSize={BatchSize} PollingIntervalSeconds={PollingIntervalSeconds}",
+            Math.Max(1, _options.WorkerCount),
             _options.BatchSize,
             _options.PollingIntervalSeconds);
 
         try
         {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await using var scope = _scopeFactory.CreateAsyncScope();
-                    var publisher = scope.ServiceProvider.GetRequiredService<IOutboxPublisher>();
-                    await publisher.ProcessBatchAsync(stoppingToken);
-                    _health.MarkOutboxPoll();
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Outbox worker iteration failed");
-                }
-
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(_options.PollingIntervalSeconds), stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-            }
+            var workerCount = Math.Max(1, _options.WorkerCount);
+            var workers = Enumerable.Range(0, workerCount)
+                .Select(index => RunLoopAsync(index, stoppingToken));
+            await Task.WhenAll(workers);
         }
         finally
         {
             _health.SetOutboxRunning(false);
             _logger.LogInformation("Outbox worker stopped");
+        }
+    }
+
+    private async Task RunLoopAsync(int workerIndex, CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Outbox poller {WorkerIndex} running", workerIndex);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var publisher = scope.ServiceProvider.GetRequiredService<IOutboxPublisher>();
+                await publisher.ProcessBatchAsync(stoppingToken);
+                _health.MarkOutboxPoll();
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Outbox poller {WorkerIndex} iteration failed", workerIndex);
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(_options.PollingIntervalSeconds), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 }

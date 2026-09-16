@@ -7,25 +7,36 @@ namespace Notification.Infrastructure.Notifications.Channels;
 
 public sealed class EmailNotificationChannel : INotificationChannel
 {
+    private readonly IEmailSender _emailSender;
     private readonly ILogger<EmailNotificationChannel> _logger;
 
-    public EmailNotificationChannel(ILogger<EmailNotificationChannel> logger)
+    public EmailNotificationChannel(
+        IEmailSender emailSender,
+        ILogger<EmailNotificationChannel> logger)
     {
+        _emailSender = emailSender;
         _logger = logger;
     }
 
     public NotificationChannel Channel => NotificationChannel.Email;
 
-    public Task SendAsync(
+    public async Task SendAsync(
         NotificationRequest notification,
         RenderedTemplate renderedTemplate,
         CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         _logger.LogInformation(
-            "Fake email channel accepted notification {NotificationId} with subject length {SubjectLength}",
+            "Sending email notification {NotificationId} with priority {Priority}",
             notification.Id,
-            renderedTemplate.Subject.Length);
-        return Task.CompletedTask;
+            notification.Priority);
+
+        await _emailSender.SendAsync(
+            new EmailSendRequest(
+                notification.Id,
+                notification.Recipient,
+                renderedTemplate.Subject,
+                renderedTemplate.Body,
+                notification.Priority),
+            cancellationToken);
     }
 }

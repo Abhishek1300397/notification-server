@@ -9,6 +9,7 @@ public sealed class OutboxMessage
     public Guid? NotificationId { get; set; }
     public string Type { get; set; } = default!;
     public string Payload { get; set; } = default!;
+    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
     public OutboxStatus Status { get; set; } = OutboxStatus.Pending;
     public DateTime CreatedAtUtc { get; set; }
     public DateTime? ProcessedAtUtc { get; set; }

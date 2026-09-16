@@ -286,6 +286,9 @@ public sealed class NotificationApplicationServiceTests
         }, CancellationToken.None);
 
         Assert.Equal("Pending", result.Status);
+        Assert.Equal("Normal", result.Priority);
+        Assert.Equal(NotificationPriority.Normal, notifications.Items[0].Priority);
+        Assert.Equal(NotificationPriority.Normal, outbox.Items[0].Priority);
         Assert.Single(notifications.Items);
         Assert.Single(outbox.Items);
         Assert.True(uow.Executed);
@@ -325,6 +328,33 @@ public sealed class NotificationApplicationServiceTests
 
         Assert.Equal(existing.Id, result.NotificationId);
         Assert.Single(notifications.Items);
+    }
+
+    [Fact]
+    public async Task Persists_requested_priority()
+    {
+        var notifications = new InMemoryNotificationRepository();
+        var outbox = new InMemoryOutboxRepository();
+        var service = new NotificationApplicationService(
+            notifications,
+            outbox,
+            new FakeUnitOfWork(),
+            new FixedClock(DateTime.UtcNow),
+            NullLogger<NotificationApplicationService>.Instance);
+
+        var result = await service.CreateAsync(new CreateNotificationRequest
+        {
+            TenantId = Guid.NewGuid(),
+            Channel = NotificationChannel.Email,
+            Priority = NotificationPriority.Critical,
+            Recipient = "user@example.com",
+            TemplateId = "welcome"
+        }, CancellationToken.None);
+
+        Assert.Equal("Critical", result.Priority);
+        Assert.Equal(NotificationPriority.Critical, notifications.Items[0].Priority);
+        Assert.Equal(NotificationPriority.Critical, outbox.Items[0].Priority);
+        Assert.Contains("\"priority\":\"Critical\"", outbox.Items[0].Payload);
     }
 }
 

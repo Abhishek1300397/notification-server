@@ -12,6 +12,9 @@ public sealed class CreateNotificationRequest
     [EnumDataType(typeof(NotificationChannel))]
     public NotificationChannel Channel { get; set; }
 
+    [EnumDataType(typeof(NotificationPriority))]
+    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
+
     [Required]
     [MaxLength(320)]
     public string Recipient { get; set; } = default!;
@@ -29,13 +32,15 @@ public sealed class CreateNotificationRequest
 public sealed record CreateNotificationResponse(
     Guid NotificationId,
     Guid TenantId,
-    string Status);
+    string Status,
+    string Priority);
 
 public sealed record NotificationStatusResponse(
     Guid NotificationId,
     Guid TenantId,
     string Channel,
     string Status,
+    string Priority,
     int AttemptCount,
     DateTime CreatedAtUtc,
     DateTime? SentAtUtc,

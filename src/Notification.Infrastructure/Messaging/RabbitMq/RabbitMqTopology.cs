@@ -47,7 +47,8 @@ public sealed class RabbitMqTopology
         var queueArgs = new Dictionary<string, object?>
         {
             ["x-dead-letter-exchange"] = _options.DeadLetterExchange,
-            ["x-dead-letter-routing-key"] = _options.DeadLetterRoutingKey
+            ["x-dead-letter-routing-key"] = _options.DeadLetterRoutingKey,
+            ["x-max-priority"] = (int)_options.MaxPriority
         };
 
         await channel.QueueDeclareAsync(
@@ -85,7 +86,8 @@ public sealed class RabbitMqTopology
             {
                 ["x-message-ttl"] = delaySeconds * 1000,
                 ["x-dead-letter-exchange"] = _options.Exchange,
-                ["x-dead-letter-routing-key"] = _options.RoutingKey
+                ["x-dead-letter-routing-key"] = _options.RoutingKey,
+                ["x-max-priority"] = (int)_options.MaxPriority
             };
 
             await channel.QueueDeclareAsync(

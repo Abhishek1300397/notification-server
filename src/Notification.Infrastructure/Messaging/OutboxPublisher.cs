@@ -6,6 +6,7 @@ using Notification.Application.Abstractions.Persistence;
 using Notification.Application.Abstractions.Processing;
 using Notification.Application.Abstractions.Time;
 using Notification.Application.Configuration;
+using Notification.Domain;
 using Notification.Domain.Entities;
 
 namespace Notification.Infrastructure.Messaging;
@@ -71,7 +72,8 @@ public sealed class OutboxPublisher : IOutboxPublisher
                     ["x-outbox-id"] = message.Id.ToString(),
                     ["x-tenant-id"] = message.TenantId.ToString(),
                     ["x-notification-id"] = message.NotificationId?.ToString() ?? string.Empty,
-                    ["x-retry-count"] = 0
+                    ["x-retry-count"] = 0,
+                    ["x-priority"] = message.Priority.ToString()
                 };
 
                 await _publisher.PublishJsonAsync(
@@ -79,6 +81,7 @@ public sealed class OutboxPublisher : IOutboxPublisher
                     _rabbitMq.RoutingKey,
                     message.Payload,
                     headers,
+                    message.Priority.ToRabbitMqPriority(),
                     cancellationToken);
 
                 message.MarkPublished(_clock.UtcNow);

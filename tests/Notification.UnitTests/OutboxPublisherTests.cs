@@ -35,6 +35,7 @@ public sealed class OutboxPublisherTests
             "notification.created",
             message.Payload,
             Arg.Any<IReadOnlyDictionary<string, object>?>(),
+            Arg.Any<byte>(),
             Arg.Any<CancellationToken>());
         Assert.Equal(OutboxStatus.Published, message.Status);
         await outbox.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
@@ -54,6 +55,7 @@ public sealed class OutboxPublisherTests
                 Arg.Any<string>(),
                 Arg.Any<string>(),
                 Arg.Any<IReadOnlyDictionary<string, object>?>(),
+                Arg.Any<byte>(),
                 Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("broker down"));
 

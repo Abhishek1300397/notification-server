@@ -17,4 +17,15 @@ public sealed class RabbitMqOptions
     public string DeadLetterRoutingKey { get; set; } = "notification.failed";
     public string RetryExchange { get; set; } = "notifications.retry";
     public ushort PrefetchCount { get; set; } = 20;
+
+    /// <summary>
+    /// Competing consumers in this process. Increase with PrefetchCount, or run more instances.
+    /// </summary>
+    public int ConsumerCount { get; set; } = 1;
+
+    /// <summary>
+    /// RabbitMQ x-max-priority. Messages use 1 (Low) through 9 (Critical).
+    /// Changing this on an existing queue requires deleting and recreating that queue.
+    /// </summary>
+    public byte MaxPriority { get; set; } = 9;
 }

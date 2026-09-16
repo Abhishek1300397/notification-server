@@ -13,6 +13,7 @@ public sealed class NotificationRequestConfiguration : IEntityTypeConfiguration<
 
         builder.Property(x => x.Channel).HasConversion<string>().HasMaxLength(32);
         builder.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.Priority).HasConversion<int>();
         builder.Property(x => x.Recipient).HasMaxLength(320).IsRequired();
         builder.Property(x => x.TemplateId).HasMaxLength(128).IsRequired();
         builder.Property(x => x.DataJson).HasColumnType("jsonb").IsRequired();
